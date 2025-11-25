@@ -1,0 +1,56 @@
+name: Swift CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - "v*"          # Any tag starting with v (ex: v1.0.0)
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "5.10"
+
+      - name: Build (Release)
+        run: swift build -c release
+
+      - name: Run tests
+        run: swift test
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: asl
+          path: .build/release/asl
+
+  release:
+    name: Publish Release
+    needs: build
+    runs-on: macos-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: asl
+
+      - name: Create GitHub Release & Upload Binary
+        uses: softprops/action-gh-release@v2
+        with:
+          files: asl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
